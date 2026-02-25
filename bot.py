@@ -8,11 +8,29 @@ import random
 import os
 from dotenv import load_dotenv
 
-# ===== CHARGER ENV =====
+# ===== FLASK POUR RENDER =====
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+def run():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+def keep_alive():
+    t = threading.Thread(target=run)
+    t.start()
+
+# ===== CHARGER TOKEN =====
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
-CHANNEL_ID = 1472286338647724105
+CHANNEL_ID = 1472286338647724105  # METS TON VRAI CHANNEL ID
 
 # ===== TES 12 LIENS =====
 SEARCH_URLS = [
@@ -30,6 +48,7 @@ SEARCH_URLS = [
     "https://www.vinted.uk/catalog?search_text=nike%20tokyo%20pants%20&currency=GBP&order=newest_first&brand_ids[]=53&catalog[]=2050"
 ]
 
+# ===== FILTRES =====
 MAX_PRICE = 40
 KEYWORDS_BLOCK = ["kids", "fake", "replica"]
 
@@ -41,7 +60,6 @@ intents = discord.Intents.default()
 bot = discord.Client(intents=intents)
 
 # ===== SAVE SEEN ITEMS =====
-
 def load_seen():
     try:
         with open("seen.json", "r") as f:
@@ -54,7 +72,6 @@ def save_seen(data):
         json.dump(data, f)
 
 # ===== SCRAPER =====
-
 def scrape():
     items = []
 
@@ -80,9 +97,11 @@ def scrape():
                     except:
                         continue
 
+                # ===== FILTRE PRIX =====
                 if price > MAX_PRICE:
                     continue
 
+                # ===== FILTRE MOTS BLOQUÉS =====
                 if any(word in title.lower() for word in KEYWORDS_BLOCK):
                     continue
 
@@ -98,14 +117,14 @@ def scrape():
 
     return items
 
-# ===== LOOP BOT =====
-
+# ===== LOOP =====
 @tasks.loop(seconds=45)
 async def check_vinted():
     await bot.wait_until_ready()
 
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
+        print("Channel introuvable")
         return
 
     seen = load_seen()
@@ -138,13 +157,12 @@ async def check_vinted():
 
     await asyncio.sleep(random.randint(5, 12))
 
-# ===== BOT READY =====
-
+# ===== READY =====
 @bot.event
 async def on_ready():
     print(f"Connecté : {bot.user}")
     check_vinted.start()
 
-# ===== RUN BOT =====
-
+# ===== IMPORTANT POUR RENDER =====
+keep_alive()
 bot.run(TOKEN)
